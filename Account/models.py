@@ -19,26 +19,45 @@ class UserManager(BaseUserManager):
         """
         Creates and saves a User with the given email, mobile, gender and password.
         """
+        user = ""
         if not email:
             raise ValueError('Users must have an email address')
 
-        user = self.model(
-            email=self.normalize_email(email),
-            mobile=mobile,
-            gender=gender,
-            country=country,
-            firstname=firstname,
-            lastname=lastname,
-            birthdate=birthdate,
-            is_agree=is_agree,
-            device_token=device_token,
-            social_id=social_id,
-            subscription=subscription,
-            country_code=country_code,
-            profile_pic=profile_pic,
-            registered_by=registered_by,
-            password=password
-        )
+        if  registered_by != "manual":
+            user = self.model(
+                email=self.normalize_email(email),
+                mobile=mobile,
+                gender=gender,
+                country=country,
+                firstname=firstname,
+                lastname=lastname,
+                birthdate=birthdate,
+                is_agree=is_agree,
+                device_token=device_token,
+                social_id=social_id,
+                subscription=subscription,
+                country_code=country_code,
+                profile_pic=profile_pic,
+                registered_by=registered_by
+            )
+        else:
+            user = self.model(
+                email=self.normalize_email(email),
+                mobile=mobile,
+                gender=gender,
+                country=country,
+                firstname=firstname,
+                lastname=lastname,
+                birthdate=birthdate,
+                is_agree=is_agree,
+                device_token=device_token,
+                social_id=social_id,
+                subscription=subscription,
+                country_code=country_code,
+                profile_pic=profile_pic,
+                registered_by=registered_by,
+                password=password
+            )
         # user.set_password(password)
         user.save(using=self._db)
         return user
@@ -79,6 +98,7 @@ class User(AbstractBaseUser):
         max_length=255,
         unique=True,
     )
+    # password = models.CharField(_('password'), max_length=128 , blank=True, null=True)
     mobile = models.CharField(max_length=255)
     country = models.CharField(max_length=255, blank=True, null=True)
     birthdate = models.CharField(default='', blank=True, null=True, max_length=255)

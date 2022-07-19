@@ -93,8 +93,11 @@ class UserRegistrationView(APIView):
             LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"User already exist with this email"}), email=serializer.email, status=False)
             return Response({"status":False, "message":"User already exist with this email"}, status=status.HTTP_404_NOT_FOUND)
         
-        userpassword = make_password(request.data['password'])
-        request.data.update({'password':userpassword})
+        if 'registered_by' in request.data and request.data["registered_by"] == "manual":
+            userpassword = make_password(request.data['password'])
+            request.data.update({'password':userpassword})
+
+            
         serializer = UserRegistrationSerializer(data=request.data)#
         if serializer.is_valid(raise_exception=False):
             user = serializer.save()

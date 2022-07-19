@@ -7,6 +7,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     ''' User Register by firstname, lastname, email, mobile, gender, country, birthdate, is_agree,
     registered_by,  password. Here, country and birthdate is optional fields'''
     profile_pic = serializers.ImageField(required=False, default="")
+    password = serializers.CharField(required=False)
     class Meta:
         model = User
         fields = ['firstname', 'lastname', 'email', 'mobile', 'country', 'birthdate', 'gender', 'registered_by', 'device_token', 'social_id', 'profile_pic', 'is_agree', 'password', 'country_code','created_at','modified_at']
