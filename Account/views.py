@@ -5,7 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login
+# from rest_framework.authentication import authenticate
 from Account.renderer import UserRenderer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from Account.serializers import UserRegistrationSerializer, UserLoginSerializer, UserSocialLoginSerializer, UserProfileSerializer, UserChangePasswordSerializer, UserSubscriptionSerializer, IncomeSerializer,ExpenseSerializer,GoalsSerializer, SourceIncomeSerializer, ExchangerateSerializer, LocationSerializer, PeriodicSerializer, SettingSerializer, TagSerializer, DebtSerializer, TransactionSerializer
@@ -94,10 +95,17 @@ class UserRegistrationView(APIView):
             return Response({"status":False, "message":"User already exist with this email"}, status=status.HTTP_404_NOT_FOUND)
         
         if 'registered_by' in request.data and request.data["registered_by"] == "manual":
-            userpassword = make_password(request.data['password'])
-            request.data.update({'password':userpassword})
+            if 'password' not in request.data or request.data["password"] == "":
+                userpassword = make_password(request.data['password'])
+                request.data.update({'password':userpassword})
+            else:
+                return Response({"status":False, "message":"password is the required field cannot be blank."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            if 'social_id' not in request.data or request.data["social_id"] == "":
+                return Response({"status":False, "message":"social_id cannot be blank while signup with social account."}, status=status.HTTP_400_BAD_REQUEST)
+        
 
-            
+
         serializer = UserRegistrationSerializer(data=request.data)#
         if serializer.is_valid(raise_exception=False):
             user = serializer.save()
@@ -320,10 +328,10 @@ class UserLoginView(APIView):
             serializer = UserSocialLoginSerializer(data=request.data)
             if serializer.is_valid(raise_exception=False):
                 email = serializer.data.get('email')
-                password = serializer.data.get('password')
+                social_id = serializer.data.get('social_id')
                 registered_by = serializer.data.get('registered_by')
-                user = authenticate(email=email, password=password, registered_by=registered_by)
-        
+                user = User.objects.get(email=email, social_id=social_id, registered_by=registered_by)
+                print(user)
                 if user is not None:
                     if not user.is_active:
                         LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"Your account is not active, please contact admin"}), email=email, status=False)
@@ -1747,6 +1755,7 @@ class TransactionView(APIView):
     def post(self,  request, pk=None, format=None):
         data_dict = {}
         data = {}
+        status_list = []
         if request.data != {}:
             location_serializer = ''
             periodicSerializer = ''

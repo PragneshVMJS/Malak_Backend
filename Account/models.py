@@ -99,7 +99,7 @@ class User(AbstractBaseUser):
         unique=True,
     )
     # password = models.CharField(_('password'), max_length=128 , blank=True, null=True)
-    mobile = models.CharField(max_length=255)
+    mobile = models.CharField(max_length=255, default="", blank=True, null=True)
     country = models.CharField(max_length=255, blank=True, null=True)
     birthdate = models.CharField(default='', blank=True, null=True, max_length=255)
     GENDER_CHOICES = (
@@ -126,7 +126,7 @@ class User(AbstractBaseUser):
     is_admin = models.BooleanField(default=False)
     is_subscribed = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=True)
-    country_code = models.CharField(max_length=5, default="")
+    country_code = models.CharField(max_length=5, default="", blank=True, null=True)
     created_at = models.DateField(auto_now_add=True)
     modified_at = models.DateField(auto_now_add=True)
     objects = UserManager()
