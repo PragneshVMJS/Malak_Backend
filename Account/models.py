@@ -36,9 +36,10 @@ class UserManager(BaseUserManager):
             subscription=subscription,
             country_code=country_code,
             profile_pic=profile_pic,
-            registered_by=registered_by
+            registered_by=registered_by,
+            password=password
         )
-        user.set_password(password)
+        # user.set_password(password)
         user.save(using=self._db)
         return user
 
@@ -89,7 +90,7 @@ class User(AbstractBaseUser):
     Register_Choices = (
         ('manual', 'manual'),
         ('facebook', 'facebook'),
-        ('gmail', 'gmail'),
+        ('google', 'google'),
         ('apple', 'apple')
     )
     registered_by = models.CharField(max_length=10, choices=Register_Choices)

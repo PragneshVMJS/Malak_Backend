@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from Account.renderer import UserRenderer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from Account.serializers import UserRegistrationSerializer, UserLoginSerializer, UserProfileSerializer, UserChangePasswordSerializer, UserSubscriptionSerializer, IncomeSerializer,ExpenseSerializer,GoalsSerializer, SourceIncomeSerializer, ExchangerateSerializer, LocationSerializer, PeriodicSerializer, SettingSerializer, TagSerializer, DebtSerializer, TransactionSerializer
+from Account.serializers import UserRegistrationSerializer, UserLoginSerializer, UserSocialLoginSerializer, UserProfileSerializer, UserChangePasswordSerializer, UserSubscriptionSerializer, IncomeSerializer,ExpenseSerializer,GoalsSerializer, SourceIncomeSerializer, ExchangerateSerializer, LocationSerializer, PeriodicSerializer, SettingSerializer, TagSerializer, DebtSerializer, TransactionSerializer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth.hashers import make_password
 import json
@@ -189,7 +189,8 @@ class UserRegistrationView(APIView):
                 message = "is_agree cannot be blank please provide either true or false"
             if 'country_code' in serializer.errors:
                 message = "please provide country_code like IN, AR"
-            
+            if 'registered_by' in serializer.errors:
+                message = "please provide manual, facebook, google or apple as a choice."
             LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":message}), email="", status=False)
             return Response({"status":False, "message":message}, status=status.HTTP_400_BAD_REQUEST)
 # User Registration Api Code End #  
@@ -199,116 +200,229 @@ class UserLoginView(APIView):
     # renderer_classes = [UserRenderer]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     def post(self, request, format=None):
-        if (('email' not in request.data and request.data['email'] == "") or ('email' not in request.data and request.data['email'] == None) and ('password' not in request.data and request.data['password'] == "") or ('password' not in request.data and request.data['password'] == None)): 
-            return Response({"status":False, "message":"email and password cannot be blank"})
-        serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=False):
-            email = serializer.data.get('email')
-            password = serializer.data.get('password')
-            user = authenticate(email=email, password=password)
-    
-            if user is not None:
-                if not user.is_active:
-                    LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"Your account is not active, please contact admin"}), email=email, status=False)
-                    return Response({"status":False, "message":"Your account is not active, please contact admin"}, status=status.HTTP_400_BAD_REQUEST)
-                elif user is not None:
-                    token = get_tokens_for_user(user)
-                    try:
-                        user = User.objects.get(email=serializer.data.get('email'))
-                    except User.DoesNotExist:
-                        LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"User Detail Not Found"}), email=email, status=False)
-                        return Response({"status":False, "message":"User Detail Not Found"}, status=status.HTTP_404_NOT_FOUND)
+        if (('email' not in request.data and request.data['email'] == "") and ('registered_by' not in request.data and request.data['registered_by'] == "")): 
+            return Response({"status":False, "message":"email and registered_by cannot be blank"})
+        
+        if request.data["registered_by"] == "manual":
+            serializer = UserLoginSerializer(data=request.data)
+            if serializer.is_valid(raise_exception=False):
+                email = serializer.data.get('email')
+                password = serializer.data.get('password')
+                registered_by = serializer.data.get('registered_by')
+                user = authenticate(email=email, password=password, registered_by=registered_by)
+        
+                if user is not None:
+                    if not user.is_active:
+                        LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"Your account is not active, please contact admin"}), email=email, status=False)
+                        return Response({"status":False, "message":"Your account is not active, please contact admin"}, status=status.HTTP_400_BAD_REQUEST)
+                    elif user is not None:
+                        token = get_tokens_for_user(user)
+                        try:
+                            user = User.objects.get(email=serializer.data.get('email'))
+                        except User.DoesNotExist:
+                            LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"User Detail Not Found"}), email=email, status=False)
+                            return Response({"status":False, "message":"User Detail Not Found"}, status=status.HTTP_404_NOT_FOUND)
 
-                    country = ''
-                    birthdate = ''
-                    device_token = ''
-                    social_id = ''
-                    subscription_id = ''
-                    profile_pic = ''
+                        country = ''
+                        birthdate = ''
+                        device_token = ''
+                        social_id = ''
+                        subscription_id = ''
+                        profile_pic = ''
 
-                    if user.country != '':
-                        country = user.country
-                    else:
-                        country = None
+                        if user.country != '':
+                            country = user.country
+                        else:
+                            country = None
 
-                    if user.birthdate != '':
-                        birthdate = user.birthdate
-                    else:
-                        birthdate = None
+                        if user.birthdate != '':
+                            birthdate = user.birthdate
+                        else:
+                            birthdate = None
 
-                    if user.device_token != '':
-                        device_token = user.device_token
-                    else:
-                        device_token = None
+                        if user.device_token != '':
+                            device_token = user.device_token
+                        else:
+                            device_token = None
+                        
+                        if user.social_id != '':
+                            social_id = user.social_id
+                        else:
+                            social_id = None
+
+                        if user.subscription != '':
+                            subscription_id = user.subscription
+                        else:
+                            subscription_id = None
+                        
+                        if user.image_url != None:
+                            profile_pic = request.build_absolute_uri(user.image_url)
+                        else:
+                            profile_pic = None
+
+                        try:
+                            settings = Setting.objects.get(user_id=str(user.id)).id
+                        except Setting.DoesNotExist:
+                            settings = "setting detail not found"
                     
-                    if user.social_id != '':
-                        social_id = user.social_id
+                        User_data = {
+                            'id':user.id,
+                            'firstname':user.firstname,
+                            'lastname':user.lastname,
+                            'email':user.email,
+                            'mobile':user.mobile,
+                            'gender':user.gender,
+                            'country':country,
+                            'birthdate':birthdate,
+                            'is_agree':user.is_agree,
+                            'registered_by':user.registered_by,
+                            'profile_pic':profile_pic,
+                            'subscription_id':str(subscription_id),
+                            'social_id':social_id,
+                            'device_token':device_token,
+                            'is_verified':user.is_verified,
+                            'setupcount':int(user.setup_count),
+                            'is_setup':user.is_setup,
+                            'is_registered':user.is_registered,
+                            'is_active':user.is_active,
+                            'is_admin':user.is_admin,
+                            'country_code':user.country_code,
+                            'is_subscribed':user.is_subscribed,
+                            'access_token':token.get('access'),
+                            'refresh_token':token.get('refresh'),
+                            'settings_id':settings
+                        }
+                        LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":True, "message":"Login Successfully"}), email=email, status=True)
+                        return Response({"status":True, "message":"Login Successfully", "data":User_data}, status=status.HTTP_200_OK)
                     else:
-                        social_id = None
-
-                    if user.subscription != '':
-                        subscription_id = user.subscription
-                    else:
-                        subscription_id = None
-                    
-                    if user.image_url != None:
-                        profile_pic = request.build_absolute_uri(user.image_url)
-                    else:
-                        profile_pic = None
-
-                    try:
-                        settings = Setting.objects.get(user_id=str(user.id)).id
-                    except Setting.DoesNotExist:
-                        settings = "setting detail not found"
-                
-                    User_data = {
-                        'id':user.id,
-                        'firstname':user.firstname,
-                        'lastname':user.lastname,
-                        'email':user.email,
-                        'mobile':user.mobile,
-                        'gender':user.gender,
-                        'country':country,
-                        'birthdate':birthdate,
-                        'is_agree':user.is_agree,
-                        'registered_by':user.registered_by,
-                        'profile_pic':profile_pic,
-                        'subscription_id':str(subscription_id),
-                        'social_id':social_id,
-                        'device_token':device_token,
-                        'is_verified':user.is_verified,
-                        'setupcount':int(user.setup_count),
-                        'is_setup':user.is_setup,
-                        'is_registered':user.is_registered,
-                        'is_active':user.is_active,
-                        'is_admin':user.is_admin,
-                        'country_code':user.country_code,
-                        'is_subscribed':user.is_subscribed,
-                        'access_token':token.get('access'),
-                        'refresh_token':token.get('refresh'),
-                        'settings_id':settings
-                    }
-                    LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":True, "message":"Login Successfully"}), email=email, status=True)
-                    return Response({"status":True, "message":"Login Successfully", "data":User_data}, status=status.HTTP_200_OK)
+                        LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":{"non_field_errors":["Email or Password is not valid"]}}), email=email, status=False)
+                        return Response({"status":False, "message":"Email or Password is not valid"}, status=status.HTTP_404_NOT_FOUND)
                 else:
-                    LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":{"non_field_errors":["Email or Password is not valid"]}}), email=email, status=False)
-                    return Response({"status":False, "message":"Email or Password is not valid"}, status=status.HTTP_404_NOT_FOUND)
+                    LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"user credential not match"}), email=request.data['email'], status=False)
+                    return Response({"status":False, "message":"user credential not match"}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"user credential not match"}), email=request.data['email'], status=False)
-                return Response({"status":False, "message":"user credential not match"}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            message = ''
-            if (('password' in serializer.errors and serializer.errors['password'][0] == "This field may not be blank.") and ('email' in serializer.errors and serializer.errors['email'][0] == "This field may not be blank.")):
-                message = "please enter your email and password to login" 
-            elif ('password' in serializer.errors and serializer.errors['password'][0] == "This field may not be blank."):
-                message = "Please provide your login password"
-            elif ('email' in serializer.errors and serializer.errors['email'][0] == "This field may not be blank."):
-                message = "please enter your email"
-            elif ('email' in serializer.errors and serializer.errors['email'][0] == "Enter a valid email address."):
-                message = "Enter a valid email address."
+                message = ''
+                if (('password' in serializer.errors and serializer.errors['password'][0] == "This field may not be blank.") and ('email' in serializer.errors and serializer.errors['email'][0] == "This field may not be blank.")):
+                    message = "please enter your email and password to login" 
+                elif ('password' in serializer.errors and serializer.errors['password'][0] == "This field may not be blank."):
+                    message = "Please provide your login password"
+                elif ('email' in serializer.errors and serializer.errors['email'][0] == "This field may not be blank."):
+                    message = "please enter your email"
+                elif ('email' in serializer.errors and serializer.errors['email'][0] == "Enter a valid email address."):
+                    message = "Enter a valid email address."
 
-            LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":serializer.errors}), email=request.data['email'], status=False)
-            return Response({"status":False, "message":message}, status=status.HTTP_400_BAD_REQUEST)
+                LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":serializer.errors}), email=request.data['email'], status=False)
+                return Response({"status":False, "message":message}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            serializer = UserSocialLoginSerializer(data=request.data)
+            if serializer.is_valid(raise_exception=False):
+                email = serializer.data.get('email')
+                password = serializer.data.get('password')
+                registered_by = serializer.data.get('registered_by')
+                user = authenticate(email=email, password=password, registered_by=registered_by)
+        
+                if user is not None:
+                    if not user.is_active:
+                        LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"Your account is not active, please contact admin"}), email=email, status=False)
+                        return Response({"status":False, "message":"Your account is not active, please contact admin"}, status=status.HTTP_400_BAD_REQUEST)
+                    elif user is not None:
+                        token = get_tokens_for_user(user)
+                        try:
+                            user = User.objects.get(email=serializer.data.get('email'))
+                        except User.DoesNotExist:
+                            LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"User Detail Not Found"}), email=email, status=False)
+                            return Response({"status":False, "message":"User Detail Not Found"}, status=status.HTTP_404_NOT_FOUND)
+
+                        country = ''
+                        birthdate = ''
+                        device_token = ''
+                        social_id = ''
+                        subscription_id = ''
+                        profile_pic = ''
+
+                        if user.country != '':
+                            country = user.country
+                        else:
+                            country = None
+
+                        if user.birthdate != '':
+                            birthdate = user.birthdate
+                        else:
+                            birthdate = None
+
+                        if user.device_token != '':
+                            device_token = user.device_token
+                        else:
+                            device_token = None
+                        
+                        if user.social_id != '':
+                            social_id = user.social_id
+                        else:
+                            social_id = None
+
+                        if user.subscription != '':
+                            subscription_id = user.subscription
+                        else:
+                            subscription_id = None
+                        
+                        if user.image_url != None:
+                            profile_pic = request.build_absolute_uri(user.image_url)
+                        else:
+                            profile_pic = None
+
+                        try:
+                            settings = Setting.objects.get(user_id=str(user.id)).id
+                        except Setting.DoesNotExist:
+                            settings = "setting detail not found"
+                    
+                        User_data = {
+                            'id':user.id,
+                            'firstname':user.firstname,
+                            'lastname':user.lastname,
+                            'email':user.email,
+                            'mobile':user.mobile,
+                            'gender':user.gender,
+                            'country':country,
+                            'birthdate':birthdate,
+                            'is_agree':user.is_agree,
+                            'registered_by':user.registered_by,
+                            'profile_pic':profile_pic,
+                            'subscription_id':str(subscription_id),
+                            'social_id':social_id,
+                            'device_token':device_token,
+                            'is_verified':user.is_verified,
+                            'setupcount':int(user.setup_count),
+                            'is_setup':user.is_setup,
+                            'is_registered':user.is_registered,
+                            'is_active':user.is_active,
+                            'is_admin':user.is_admin,
+                            'country_code':user.country_code,
+                            'is_subscribed':user.is_subscribed,
+                            'access_token':token.get('access'),
+                            'refresh_token':token.get('refresh'),
+                            'settings_id':settings
+                        }
+                        LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":True, "message":"Login Successfully"}), email=email, status=True)
+                        return Response({"status":True, "message":"Login Successfully", "data":User_data}, status=status.HTTP_200_OK)
+                    else:
+                        LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":{"non_field_errors":["Email or Password is not valid"]}}), email=email, status=False)
+                        return Response({"status":False, "message":"Email or Password is not valid"}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":"user credential not match"}), email=request.data['email'], status=False)
+                    return Response({"status":False, "message":"user credential not match"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                message = ''
+                if (('password' in serializer.errors and serializer.errors['password'][0] == "This field may not be blank.") and ('email' in serializer.errors and serializer.errors['email'][0] == "This field may not be blank.")):
+                    message = "please enter your email and password to login" 
+                elif ('password' in serializer.errors and serializer.errors['password'][0] == "This field may not be blank."):
+                    message = "Please provide your login password"
+                elif ('email' in serializer.errors and serializer.errors['email'][0] == "This field may not be blank."):
+                    message = "please enter your email"
+                elif ('email' in serializer.errors and serializer.errors['email'][0] == "Enter a valid email address."):
+                    message = "Enter a valid email address."
+
+                LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":serializer.errors}), email=request.data['email'], status=False)
+                return Response({"status":False, "message":message}, status=status.HTTP_400_BAD_REQUEST)
 # User Login Api Code End #
 
 # User Profile API Code Start #                 Done with logs

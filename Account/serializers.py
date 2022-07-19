@@ -27,12 +27,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 # Login Serializer Code Start #
 class UserLoginSerializer(serializers.ModelSerializer):
-    ''' User Login by email and password '''
+    ''' User Login by email and password and registered_by '''
     email = serializers.EmailField(max_length=255)
     class Meta:
         model = User
-        fields = ['email', 'password']
+        fields = ['email', 'password', 'registered_by']
 # Login Serializer Code End #
+
+# Social Login Code Start #
+class UserSocialLoginSerializer(serializers.ModelSerializer):
+    ''' User Login by email and social_id and registered_by '''
+    email = serializers.EmailField(max_length=255)
+    class Meta:
+        model = User
+        fields = ['email', 'social_id', 'registered_by']
+# Social Login Code End #
 
 # User Profile Serializer Code Start #
 class UserProfileSerializer(serializers.ModelSerializer):
