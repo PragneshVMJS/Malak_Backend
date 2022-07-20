@@ -23,6 +23,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         }
     
     def create(self, validate_data):
+        # print(validate_data)
         return User.objects.create(**validate_data)
 # Registration Serializer Code End #
 
@@ -244,8 +245,8 @@ class LocationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         location = Location.objects.create(
-            latitude=validated_data['latitude'],
-            longitude=validated_data['longitude'])
+            latitude=float(validated_data['latitude']),
+            longitude=float(validated_data['longitude']))
         location.save()
         return location
 # User Location Serializer Code End #

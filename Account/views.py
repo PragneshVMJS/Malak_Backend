@@ -85,6 +85,7 @@ class UserRegistrationView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     def post(self, request, format=None):
         serializer = ''
+        userpassword = ""
         try:
             serializer = User.objects.get(email=request.data['email'])
         except User.DoesNotExist:
@@ -95,17 +96,16 @@ class UserRegistrationView(APIView):
             return Response({"status":False, "message":"User already exist with this email"}, status=status.HTTP_404_NOT_FOUND)
         
         if 'registered_by' in request.data and request.data["registered_by"] == "manual":
-            if 'password' not in request.data or request.data["password"] == "":
+            if 'password' in request.data or request.data["password"] != "":
                 userpassword = make_password(request.data['password'])
-                request.data.update({'password':userpassword})
+                request.data.update({"password":userpassword})
             else:
                 return Response({"status":False, "message":"password is the required field cannot be blank."}, status=status.HTTP_400_BAD_REQUEST)
         else:
             if 'social_id' not in request.data or request.data["social_id"] == "":
-                return Response({"status":False, "message":"social_id cannot be blank while signup with social account."}, status=status.HTTP_400_BAD_REQUEST)
-        
+                return Response({"status":False, "message":"social_id cannot be blank while signup with social account."}, status=status.HTTP_400_BAD_REQUEST)            
 
-
+        print(request.data)
         serializer = UserRegistrationSerializer(data=request.data)#
         if serializer.is_valid(raise_exception=False):
             user = serializer.save()
@@ -1788,8 +1788,15 @@ class TransactionView(APIView):
                 if 'week_days' in request.data and request.data["week_days"] != "":
                     Date_List = str(request.data["week_days"]).split(",")
                     for x in Date_List:
-                        x = False
-                        status_list.append(str(x))
+                        x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
+                        if x_date == datetime.now().date():
+                            Date_List.remove(x)
+                            
+                    for x in data:
+                        x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
+                        if x_date > datetime.now().date():
+                            status_list.append(False)
+
                     status_days = ','.join(status_list)
                     data = {
                         "start_date":request.data['start_date'],
@@ -1810,7 +1817,6 @@ class TransactionView(APIView):
                     if "month" in request.data['prefix'] and request.data['prefix_value'] != 0:
                         del status_list[:]
                         Date_Dict = Get_Dates(prefix=request.data['prefix'], prefix_value=int(request.data['prefix_value']), enddate=request.data['end_date'], startdate=start_date)
-                        print(Date_Dict)
                         Date_List = Date_Dict["Date_Months"].split(",")
                         for x in Date_List:
                             x = False
@@ -2368,6 +2374,9 @@ class TransactionView(APIView):
             source = ''
             expense = ''
             debt = ''
+            location = ''
+            periodic = ''
+            status_list = []
 
             try:
                 user = User.objects.get(email=request.user).id
@@ -2379,45 +2388,211 @@ class TransactionView(APIView):
             except Transaction.DoesNotExist:
                 return Response({"status":False, "message":"Transaction detail not found with id %s"%(pk)}, status=status.HTTP_404_NOT_FOUND)
 
-            if transaction.income_from_id is not None:
+            if transaction.income_from_id is not None and transaction.income_from_id != "":
                 income_from = Income.objects.filter(user_id=user, id=transaction.income_from_id) 
             
-            if transaction.income_to_id is not None:
+            if transaction.income_to_id is not None and transaction.income_to_id != "":
                 income_to = Income.objects.filter(user_id=user, id=transaction.income_to_id)
 
-            if transaction.goal_id is not None:
+            if transaction.goal_id is not None and transaction.goal_id != "":
                 goal = Goal.objects.filter(user_id=user, id=transaction.goal_id)
 
-            if transaction.source_id is not None:
+            if transaction.source_id is not None and transaction.source_id != "":
                 source = SourceIncome.objects.filter(user_id=user, id=transaction.source_id)
 
-            if transaction.expense_id is not None:
+            if transaction.expense_id is not None and transaction.expense_id != "":
                 expense = Expense.objects.filter(user_id=user, id=transaction.expense_id)
 
-            if transaction.debt_id is not None:
+            if transaction.debt_id is not None and transaction.debt_id != "":
                 debt = Debt.objects.filter(user_id=user, id=transaction.debt_id)
+
+            # Server Update #
+            if transaction.location_id is not None and transaction.location_id != "":
+                location = Location.objects.get(id=str(transaction.location_id))
+                if 'longitude' in request.data and 'latitude' in request.data:
+                    if request.data["longitude"] != "" and request.data["latitude"] != "":
+                        location_dict = {
+                            "longitude":request.data.pop("longitude"),
+                            "latitude":request.data.pop("latitude")
+                        }
+                        location = LocationSerializer(location, data=location_dict)
+                        if location.is_valid(raise_exception=False):
+                            location.save()
+                        else:
+                            message = ""
+                            if 'latitude' in location.errors:
+                                message = "latitude cannot be blank must be double."
+                            
+                            if 'longitude' in location.errors:
+                                message = "longitude cannot be blank must be double."
+                            return Response({"status":False, "message":message},status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        return Response({"status":False, "message":"longiude and latitude cannot be blank."}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if 'longitude' in request.data and 'latitude' in request.data:
+                    if request.data["longitude"] != "" and request.data["latitude"] != "":
+                        location_dict = {
+                            "longitude":request.data.pop("longitude"),
+                            "latitude":request.data.pop("latitude")
+                        }
+                        location = LocationSerializer(data=location_dict)
+                        if location.is_valid(raise_exception=False):
+                            location.save()
+                        else:
+                            message = ""
+                            if 'latitude' in location.errors:
+                                message = "latitude cannot be blank must be double."
+                            
+                            if 'longitude' in location.errors:
+                                message = "longitude cannot be blank must be double."
+                            return Response({"status":False, "message":message},status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        return Response({"status":False, "message":"longiude and latitude cannot be blank."}, status=status.HTTP_400_BAD_REQUEST)
+            # Server Update #
+
+            if transaction.periodic_id is not None and transaction.periodic_id != "":
+                periodic = Periodic.objects.get(id=str(transaction.periodic_id))
+            else:
+                print("A")
+                periodic_dict = {}
+                if ('start_date' in request.data and 'end_date' in request.data and 'prefix' in request.data and 'prefix_value' in request.data and request.data["start_date"] != 0 and request.data["end_date"] != 0 and request.data["prefix"] != 0 and request.data["prefix_value"] != 0):
+                    print("B")
+                    if 'week_days' in request.data and request.data["week_days"] != "":
+                        print("C")
+                        Date_List = str(request.data["week_days"]).split(",")
+                        for x in Date_List:
+                            x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
+                            if x_date == datetime.now().date():
+                                Date_List.remove(x)
+
+                        for x in Date_List:
+                            x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
+                            if x_date > datetime.now().date():
+                                status_list.append(False)
+                        status_days = ','.join(status_list)
+                        periodic_dict = {
+                            "start_date":request.data['start_date'],
+                            "end_date":request.data['end_date'],
+                            "prefix":request.data['prefix'],
+                            "prefix_value":request.data['prefix_value'],
+                            "week_days":request.data["week_days"],
+                            "status_days":status_days
+                        }  
+                    else:
+                        print("D")
+                        # Changes Server #
+                        start_date = None
+                        if request.data['start_date'] != "":
+                            start_date = request.data['start_date']
+                        else:
+                            start_date = date.today()
+
+                        if "month" in request.data['prefix'] and request.data['prefix_value'] != 0:
+                            del status_list[:]
+                            Date_Dict = Get_Dates(prefix=request.data['prefix'], prefix_value=int(request.data['prefix_value']), enddate=request.data['end_date'], startdate=start_date)
+                            
+                            Date_List = Date_Dict["Date_Months"].split(",")
+                            for x in Date_List:
+                                x = False
+                                status_list.append(str(x))
+                            status_days = ','.join(status_list)
+                            periodic_dict = {
+                                "start_date":start_date,
+                                "end_date":request.data['end_date'],
+                                "prefix":request.data['prefix'],
+                                "prefix_value":request.data['prefix_value'],
+                                "week_days":Date_Dict["Date_Months"],
+                                "status_days":status_days
+                            }
+
+                        elif "year" in request.data['prefix'] and request.data['prefix_value'] != 0:
+                            del status_list[:]
+                            Date_Dict = Get_Dates(prefix=request.data['prefix'], prefix_value=int(request.data['prefix_value']), enddate=request.data['end_date'], startdate=start_date)
+                            Date_List = Date_Dict["Date_Years"].split(",")
+                            for x in Date_List:
+                                x = False
+                                status_list.append(str(x))
+                            status_days = ','.join(status_list)
+                            periodic_dict = {
+                                "start_date":start_date,
+                                "end_date":request.data['end_date'],
+                                "prefix":request.data['prefix'],
+                                "prefix_value":request.data['prefix_value'],
+                                "week_days":Date_Dict["Date_Years"],
+                                "status_days":status_days
+                            }
+
+                        elif "day" in request.data['prefix'] and request.data['prefix_value'] != 0:
+                            print("yes1")
+                            del status_list[:]
+                            Date_Dict = Get_Dates(prefix=request.data['prefix'], prefix_value=int(request.data['prefix_value']), enddate=request.data['end_date'], startdate=start_date)
+                            Date_List = Date_Dict["Date_Days"].split(",")
+                            for x in Date_List:
+                                x = False
+                                status_list.append(str(x))
+                            status_days = ','.join(status_list)
+                            periodic_dict = {
+                                "start_date":start_date,
+                                "end_date":request.data['end_date'],
+                                "prefix":request.data['prefix'],
+                                "prefix_value":request.data['prefix_value'],
+                                "week_days":Date_Dict["Date_Days"],
+                                "status_days":status_days
+                            }
+                        else:
+                            return Response({"status":False, "message":"prefix_value cannot be blank must be integer"}, status=status.HTTP_400_BAD_REQUEST)
+                        # Changes on server # 
+                        periodic = PeriodicSerializer(data=periodic_dict) 
+                        if periodic.is_valid(raise_exception=False):
+                            print("yes2")
+                            periodic.save()
+                        else:
+                            print(periodic.errors, "yes3")
+                            message = ""
+                            if 'start_date' in periodic.errors:
+                                message = "provide valid date yyyy-mm-dd."
+                            if 'end_date' in periodic.errors:
+                                message = "provide valid date yyyy-mm-dd."
+                            if 'week_days' in periodic.errors:
+                                message = "week_days cannot be blank and must be comma saparated string like 2022-07-12,2022-07-13."
+                            if 'prefix' in periodic.errors:
+                                message = "prefix cannot be blank must be string choice like day,month,year,week."
+                            if 'prefix_value' in periodic.errors:
+                                message="prefix_value must be integer."
+                            if 'status_days' in periodic.errors:
+                                message = "status_days cannot be blank must be comma saparated string like false,false,false."
+                            return Response({"status":False, "message":message}, status=status.HTTP_400_BAD_REQUEST)
+                
 
             if (len(source) > 0 and len(income_to) > 0 and len(goal) <= 0 and len(income_from) <= 0 and len(expense) <= 0):
                 source_amount = ''
                 income_to_amount = ''
                 updated_transfer_amount = ''
-                if float(request.data["amount"]) > float(transaction.amount):
-                    updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
-                    source_amount = float(source[0].spent_amount) + float(updated_transfer_amount)
-                    income_to_amount = float(income_to[0].amount) + float(updated_transfer_amount)
-                elif float(request.data["amount"]) < float(transaction.amount):
-                    updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
-                    source_amount = float(source[0].spent_amount) - float(updated_transfer_amount)
-                    income_to_amount = float(income_to[0].amount) - float(updated_transfer_amount)
-                elif float(request.data["amount"]) == float(transaction.amount):
-                    request.data.pop("amount")
+                if 'amount' in request.data:
+                    if float(request.data["amount"]) > float(transaction.amount):
+                        updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
+                        source_amount = float(source[0].spent_amount) + float(updated_transfer_amount)
+                        income_to_amount = float(income_to[0].amount) + float(updated_transfer_amount)
+                    elif float(request.data["amount"]) < float(transaction.amount):
+                        updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
+                        source_amount = float(source[0].spent_amount) - float(updated_transfer_amount)
+                        income_to_amount = float(income_to[0].amount) - float(updated_transfer_amount)
+                    elif float(request.data["amount"]) == float(transaction.amount):
+                        request.data.pop("amount")
+                # Server Update #
+                if transaction.location_id is None: # create new location
+                    request.data["location"] = location.data.get('id')
+                # Server Update #
+                if transaction.periodic_id is None:
+                    request.data["periodic"] = periodic.data.get('id')
 
                 transaction_serializer = TransactionSerializer(transaction, data=request.data)
                 if transaction_serializer.is_valid(raise_exception=False):
                     transaction_id = transaction_serializer.save()
                     if len(str(transaction_id)) > 0:
-                        source.update(spent_amount=source_amount)
-                        income_to.update(amount=income_to_amount)
+                        if ('amount' in request.data and float(request.data["amount"]) != float(transaction.amount)):
+                            source.update(spent_amount=source_amount)
+                            income_to.update(amount=income_to_amount)
                     else:
                         return Response({"status":False, "message":"Transaction Update Fail by id %s"%(pk)}, status=status.HTTP_304_NOT_MODIFIED)
                     return Response({"status":True, "message":"%s Transaction Amount Update from source %s to income %s"%(pk, source[0].title, income_to[0].title), "data":transaction_serializer.data}, status=status.HTTP_200_OK)
@@ -2428,24 +2603,31 @@ class TransactionView(APIView):
                 income_from_amount = ''
                 income_to_amount = ''
                 updated_transfer_amount = ''
+                if 'amount' in request.data:
+                    if float(request.data["amount"]) > float(transaction.amount):
+                        updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
+                        income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
+                        income_to_amount = float(income_to[0].amount) + float(updated_transfer_amount)
+                    elif float(request.data["amount"]) < float(transaction.amount):
+                        updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
+                        income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
+                        income_to_amount = float(income_to[0].amount) - float(updated_transfer_amount)
+                    elif float(request.data["amount"]) == float(transaction.amount):
+                        request.data.pop("amount")
 
-                if float(request.data["amount"]) > float(transaction.amount):
-                    updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
-                    income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
-                    income_to_amount = float(income_to[0].amount) + float(updated_transfer_amount)
-                elif float(request.data["amount"]) < float(transaction.amount):
-                    updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
-                    income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
-                    income_to_amount = float(income_to[0].amount) - float(updated_transfer_amount)
-                elif float(request.data["amount"]) == float(transaction.amount):
-                    request.data.pop("amount")
+                if transaction.location_id is None: # create new location
+                    request.data["location"] = location.data.get('id')
+
+                if transaction.periodic_id is None:
+                    request.data["periodic"] = periodic.data.get('id')
 
                 transaction_serializer = TransactionSerializer(transaction, data=request.data)
                 if transaction_serializer.is_valid(raise_exception=False):
                     transaction_id = transaction_serializer.save()
                     if len(str(transaction_id)) > 0:
-                        income_from.update(amount=income_from_amount)
-                        income_to.update(amount=income_to_amount)
+                        if ('amount' in request.data and float(request.data["amount"]) != float(transaction.amount)):
+                            income_from.update(amount=income_from_amount)
+                            income_to.update(amount=income_to_amount)
                     else:
                         return Response({"status":False, "message":"Transaction Update Fail by id %s"%(pk)}, status=status.HTTP_304_NOT_MODIFIED)
                     return Response({"status":True, "message":"%s Transaction Amount Update from Income %s to Income %s"%(pk, income_from[0].title, income_to[0].title), "data":transaction_serializer.data}, status=status.HTTP_200_OK)
@@ -2456,24 +2638,31 @@ class TransactionView(APIView):
                 income_from_amount = ''
                 goal_amount = ''
                 updated_transfer_amount = ''
+                if 'amount' in request.data:
+                    if float(request.data["amount"]) > float(transaction.amount):
+                        updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
+                        income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
+                        goal_amount = float(goal[0].added_amount) + float(updated_transfer_amount)
+                    elif float(request.data["amount"]) < float(transaction.amount):
+                        updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
+                        income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
+                        goal_amount = float(goal[0].added_amount) - float(updated_transfer_amount)
+                    elif float(request.data["amount"]) == float(transaction.amount):
+                        request.data.pop("amount")
+                    
+                if transaction.location_id is None: # create new location
+                    request.data["location"] = location.data.get('id')
 
-                if float(request.data["amount"]) > float(transaction.amount):
-                    updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
-                    income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
-                    goal_amount = float(goal[0].added_amount) + float(updated_transfer_amount)
-                elif float(request.data["amount"]) < float(transaction.amount):
-                    updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
-                    income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
-                    goal_amount = float(goal[0].added_amount) - float(updated_transfer_amount)
-                elif float(request.data["amount"]) == float(transaction.amount):
-                    request.data.pop("amount")
+                if transaction.periodic_id is None:
+                    request.data["periodic"] = periodic.data.get('id')
 
                 transaction_serializer = TransactionSerializer(transaction, data=request.data)
                 if transaction_serializer.is_valid(raise_exception=False):
                     transaction_id = transaction_serializer.save()
                     if len(str(transaction_id)) > 0:
-                        income_from.update(amount=income_from_amount)
-                        goal.update(added_amount=goal_amount)
+                        if ('amount' in request.data and float(request.data["amount"]) != float(transaction.amount)):
+                            income_from.update(amount=income_from_amount)
+                            goal.update(added_amount=goal_amount)
                     else:
                         return Response({"status":False, "message":"Transaction Update Fail by id %s"%(pk)}, status=status.HTTP_304_NOT_MODIFIED)
                     return Response({"status":True, "message":"%s Transaction Amount Update from Income %s to Goal %s"%(pk, income_from[0].title, goal[0].title), "data":transaction_serializer.data}, status=status.HTTP_200_OK)
@@ -2484,24 +2673,31 @@ class TransactionView(APIView):
                 income_from_amount = ''
                 expense_amount = ''
                 updated_transfer_amount = ''
-
-                if float(request.data["amount"]) > float(transaction.amount):
-                    updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
-                    income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
-                    expense_amount = float(expense[0].spent_amount) + float(updated_transfer_amount)
-                elif float(request.data["amount"]) < float(transaction.amount):
-                    updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
-                    income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
-                    expense_amount = float(expense[0].spent_amount) - float(updated_transfer_amount)
-                elif float(request.data["amount"]) == float(transaction.amount):
-                    request.data.pop("amount")
+                if 'amount' in request.data:
+                    if float(request.data["amount"]) > float(transaction.amount):
+                        updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
+                        income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
+                        expense_amount = float(expense[0].spent_amount) + float(updated_transfer_amount)
+                    elif float(request.data["amount"]) < float(transaction.amount):
+                        updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
+                        income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
+                        expense_amount = float(expense[0].spent_amount) - float(updated_transfer_amount)
+                    elif float(request.data["amount"]) == float(transaction.amount):
+                        request.data.pop("amount")
+                    
+                if transaction.location_id is None: # create new location
+                    request.data["location"] = location.data.get('id')
+                
+                if transaction.periodic_id is None:
+                    request.data["periodic"] = periodic.data.get('id')
                 
                 transaction_serializer = TransactionSerializer(transaction, data=request.data)
                 if transaction_serializer.is_valid(raise_exception=False):
                     transaction_id = transaction_serializer.save()
                     if len(str(transaction_id)) > 0:
-                        income_from.update(amount=income_from_amount)
-                        expense.update(spent_amount=expense_amount)
+                        if ('amount' in request.data and float(request.data["amount"]) != float(transaction.amount)):
+                            income_from.update(amount=income_from_amount)
+                            expense.update(spent_amount=expense_amount)
                     else:
                         return Response({"status":False, "message":"Transaction Update Fail by id %s"%(pk)}, status=status.HTTP_304_NOT_MODIFIED)
                     return Response({"status":True, "message":"%s Transaction Amount Update from Income %s to Expense %s"%(pk, income_from[0].title, expense[0].title), "data":transaction_serializer.data}, status=status.HTTP_200_OK)
@@ -2512,24 +2708,31 @@ class TransactionView(APIView):
                 income_from_amount = ''
                 debt_amount = ''
                 updated_transfer_amount = ''
-
-                if float(request.data["amount"]) > float(transaction.amount):
-                    updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
-                    income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
-                    debt_amount = float(debt[0].paid_amount) + float(updated_transfer_amount)
-                elif float(request.data["amount"]) < float(transaction.amount):
-                    updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
-                    income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
-                    debt_amount = float(debt[0].paid_amount) - float(updated_transfer_amount)
-                elif request.data["amount"] == transaction.amount:
-                    request.data.pop("amount")
+                if 'amount' in request.data:
+                    if float(request.data["amount"]) > float(transaction.amount):
+                        updated_transfer_amount = float(request.data["amount"]) - float(transaction.amount)
+                        income_from_amount = float(income_from[0].amount) - float(updated_transfer_amount)
+                        debt_amount = float(debt[0].paid_amount) + float(updated_transfer_amount)
+                    elif float(request.data["amount"]) < float(transaction.amount):
+                        updated_transfer_amount =  float(transaction.amount) - float(request.data["amount"])
+                        income_from_amount = float(income_from[0].amount) + float(updated_transfer_amount)
+                        debt_amount = float(debt[0].paid_amount) - float(updated_transfer_amount)
+                    elif float(request.data["amount"]) == float(transaction.amount):
+                        request.data.pop("amount")
+                    
+                if transaction.location_id is None: # create new location
+                    request.data["location"] = location.data.get('id')
+                
+                if transaction.periodic_id is None:
+                    request.data["periodic"] = periodic.data.get('id')
 
                 transaction_serializer = TransactionSerializer(transaction, data=request.data)
                 if transaction_serializer.is_valid(raise_exception=False):
                     transaction_id = transaction_serializer.save()
                     if len(str(transaction_id)) > 0:
-                        income_from.update(amount=income_from_amount)
-                        debt.update(paid_amount=debt_amount)
+                        if ('amount' in request.data and float(request.data["amount"]) != float(transaction.amount)):
+                            income_from.update(amount=income_from_amount)
+                            debt.update(paid_amount=debt_amount)
                     else:
                         return Response({"status":False, "message":"Transaction Update Fail by id %s"%(pk)}, status=status.HTTP_304_NOT_MODIFIED)
                     return Response({"status":True, "message":"%s Transaction Amount Update from Income %s to Debt %s"%(pk, income_from[0].title, debt[0].name), "data":transaction_serializer.data}, status=status.HTTP_200_OK)
@@ -2696,6 +2899,12 @@ class TransactionView(APIView):
             if transaction.debt_id is not None:
                 debt = Debt.objects.filter(id=str(transaction.debt_id))
             
+            if transaction.locaion_id != "":
+                location = Location.objects.filter(id=str(transaction.locaion_id))
+            
+            if transaction.periodic_id != "":
+                periodic = Periodic.objects.filter(id=str(transaction.periodic_id))
+            
             if len(income_from) > 0 and len(expense) > 0 and len(income_to) <= 0 and len(goal) <= 0 and len(source) <= 0:
         
                 income_from_amount = float(income_from[0].amount) + float(transaction.amount) 
@@ -2704,6 +2913,13 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0:
                     income_from.update(amount=income_from_amount)
                     expense.update(spent_amount=expense_amount)
+                    if transaction.periodic_id != "" and transaction.locaion_id != "":
+                        location.delete()
+                        periodic.delete()
+                    elif transaction.periodic_id != "" and transaction.locaion_id == "":
+                        periodic.delete()
+                    else:
+                        location.delete()
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -2724,6 +2940,13 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0: 
                     income_from.update(amount=income_from_amount)
                     income_to.update(amount=income_to_amount)
+                    if transaction.periodic_id != "" and transaction.locaion_id != "":
+                        location.delete()
+                        periodic.delete()
+                    elif transaction.periodic_id != "" and transaction.locaion_id == "":
+                        periodic.delete()
+                    else:
+                        location.delete()
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -2745,6 +2968,13 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0:
                     source.update(spent_amount=source_amount)
                     income_to.update(amount=income_to_amount)
+                    if transaction.periodic_id != "" and transaction.locaion_id != "":
+                        location.delete()
+                        periodic.delete()
+                    elif transaction.periodic_id != "" and transaction.locaion_id == "":
+                        periodic.delete()
+                    else:
+                        location.delete()
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -2766,6 +2996,13 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0:
                     income_from.update(amount=income_from_amount)
                     goal.update(added_amount=goal_amount) 
+                    if transaction.periodic_id != "" and transaction.locaion_id != "":
+                        location.delete()
+                        periodic.delete()
+                    elif transaction.periodic_id != "" and transaction.locaion_id == "":
+                        periodic.delete()
+                    else:
+                        location.delete()
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -2788,7 +3025,15 @@ class TransactionView(APIView):
                     income_from.update(amount=income_from_amount)
                     if float(debt[0].paid_amount) == float(0.00):
                         debt.update(paid_amount=debt_amount, is_partial_paid=False, is_paid=False, is_completed=False) 
-                    debt.update(paid_amount=debt_amount) 
+                    else:
+                        debt.update(paid_amount=debt_amount) 
+                    if transaction.periodic_id != "" and transaction.locaion_id != "":
+                        location.delete()
+                        periodic.delete()
+                    elif transaction.periodic_id != "" and transaction.locaion_id == "":
+                        periodic.delete()
+                    else:
+                        location.delete()
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
