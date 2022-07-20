@@ -325,12 +325,16 @@ class UserLoginView(APIView):
                 LogsAPI.objects.create(apiname=str(request.get_full_path()), request_data=json.dumps(request.data), response_data=json.dumps({"status":False, "message":serializer.errors}), email=request.data['email'], status=False)
                 return Response({"status":False, "message":message}, status=status.HTTP_400_BAD_REQUEST)
         else:
+            print("yes")
             serializer = UserSocialLoginSerializer(data=request.data)
             if serializer.is_valid(raise_exception=False):
+                print("yes1")
                 email = serializer.data.get('email')
+                password = serializer.data.get('password')
                 social_id = serializer.data.get('social_id')
                 registered_by = serializer.data.get('registered_by')
-                user = User.objects.get(email=email, social_id=social_id, registered_by=registered_by)
+                # user = User.objects.get(email=email, social_id=social_id, registered_by=registered_by)
+                user = authenticate(email=email, registered_by=registered_by, social_id=social_id)
                 print(user)
                 if user is not None:
                     if not user.is_active:
