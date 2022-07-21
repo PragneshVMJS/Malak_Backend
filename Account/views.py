@@ -1442,70 +1442,6 @@ class LocationDetailView(APIView):
         
         serializer = LocationSerializer(location)
         return Response({"status":True,"message":"fetch data successfully", "data":serializer.data}, status=status.HTTP_200_OK)
-
-
-    # def put(self,request,format=None):
-    #     try:
-    #         user = User.objects.get(email=request.user).id
-    #     except User.DoesNotExist:
-    #         return Response({'status':False, 'message':'user data not found'}, status=status.HTTP_404_NOT_FOUND)
-    #     try:
-    #         trans = Transaction.objects.get(user_id=user, id=request.data.get('transaction_id'))
-    #     except Transaction.DoesNotExist:
-    #         return Response({'status':False, 'message':'transaction data not found'}, status=status.HTTP_404_NOT_FOUND)
-        
-    #     if trans.location_id != None:
-    #         try:
-    #             location =Location.objects.get(id=trans.location_id)
-    #         except Location.DoesNotExist:
-    #             return Response({'status':False, 'message':'Location data not found'}, status=status.HTTP_404_NOT_FOUND)
-            
-    #         serializer = LocationSerializer(location,data=request.data)
-    #         if serializer.is_valid(raise_exception=False):
-    #             serializer.save()
-    #             # Transaction.objects.filter(user_id=user.id, id=request.data.get('transaction_id')).update(periodic=serializer.data.get('id'))
-    #             return Response({"status":True, "message":"successfully updated", "data":serializer.data}, status=status.HTTP_200_OK)
-    #         else:
-    #             message = ""
-    #             if 'latitude' in serializer.errors:
-    #                 message = "latitude cannot be blank must be double max_length 15 digit."
-                
-    #             if 'longitude' in serializer.errors:
-    #                 message = "longitude cannot be blank must be double max_length 15 digit."
-    #             return Response({"status":False, "message":message},status=status.HTTP_400_BAD_REQUEST)  
-    #     else:
-    #         serializer = LocationSerializer(data=request.data)
-    #         if serializer.is_valid(raise_exception=False):
-    #             serializer.save()
-    #             Transaction.objects.filter(user_id=user.id, id=request.data.get('transaction_id')).update(location=serializer.data.get('id'))
-    #             return Response({"status":"update success", "data":serializer.data}, status=status.HTTP_201_CREATED)
-    #         else:
-    #             message = ""
-    #             if 'latitude' in serializer.errors:
-    #                 message = "latitude cannot be blank must be double max_length 15 digit."
-                
-    #             if 'longitude' in serializer.errors:
-    #                 message = "longitude cannot be blank must be double max_length 15 digit."
-    #             return Response({"status":False, "message":message},status=status.HTTP_400_BAD_REQUEST)    
-
-    # def delete(self,request, pk=None):
-    #     try:
-    #         user = User.objects.get(email=request.user).id
-    #     except User.DoesNotExist:
-    #         return Response({'status':False, 'message':'user data not found'}, status=status.HTTP_404_NOT_FOUND)
-    #     try:
-    #         trans = Transaction.objects.get(user_id=user, id=request.data.get('transaction_id'))
-    #     except Transaction.DoesNotExist:
-    #         return Response({'status':False, 'message':'transaction data not found'}, status=status.HTTP_404_NOT_FOUND)
-    #     try:
-    #         location = Location.objects.get(id=trans.location_id)
-    #     except Location.DoesNotExist:
-    #         return Response({'status':False, 'message':'LOCATION data not found'}, status=status.HTTP_404_NOT_FOUND)
-        
-        
-    #     location.delete()
-        
-    #     return Response({"status":True, "message":"data was successfully delete"}, status=status.HTTP_200_OK)
 # User location API Code end#
 
 # User periodic API Code Start#
@@ -1536,76 +1472,6 @@ class PeriodicDetailView(APIView):
         
         serializer = PeriodicSerializer(periodic)
         return Response({"status":True,"message":"fetch data successfully", "data":serializer.data}, status=status.HTTP_200_OK)
-
-
-    # def put(self,request,format=None):
-    #     try:
-    #         user = User.objects.get(email=request.user).id
-    #     except User.DoesNotExist:
-    #         return Response({'status':False, 'message':'user data not found'}, status=status.HTTP_404_NOT_FOUND)
-    #     try:
-    #         trans = Transaction.objects.get(user_id=user, id=str(request.data.get('transaction_id')))
-    #     except Transaction.DoesNotExist:
-    #         return Response({'status':False, 'message':'transaction data not found'}, status=status.HTTP_404_NOT_FOUND)
-        
-    #     if trans.periodic_id != None:
-    #         try:
-    #             periodic = Periodic.objects.get(id=trans.periodic_id)
-    #         except Periodic.DoesNotExist:
-    #             return Response({'status':False, 'message':'periodic data not found'}, status=status.HTTP_404_NOT_FOUND)
-            
-    #         serializer = PeriodicSerializer(periodic,data=request.data)
-    #         if serializer.is_valid(raise_exception=False):
-    #             serializer.save()
-    #             return Response({"status":True, "data":serializer.data}, status=status.HTTP_201_CREATED)
-    #         else:
-    #             message = ""
-    #             if 'start_date' in serializer.errors:
-    #                 message = "provide valid date yyyy-mm-dd."
-    #             if 'end_date' in serializer.errors:
-    #                 message = "provide valid date yyyy-mm-dd."
-    #             if 'week_days' in serializer.errors:
-    #                 message = "week_days cannot be blank and must be comma saparated string like 2022-07-12,2022-07-13."
-    #             if 'prefix' in serializer.errors:
-    #                 message = "prefix cannot be blank must be string choice like day,month,year,week."
-    #             if 'prefix_value' in serializer.errors:
-    #                 message="prefix_value must be integer."
-    #             return Response({"status":False, "message":message},status=status.HTTP_400_BAD_REQUEST)  
-    #     else:
-    #         serializer = PeriodicSerializer(data=request.data)
-    #         if serializer.is_valid(raise_exception=False):
-    #             serializer.save()
-    #             Transaction.objects.filter(user_id=user, id=request.data.get('transaction_id')).update(periodic=serializer.data.get('id'))
-    #             return Response({"status":"update success", "data":serializer.data}, status=status.HTTP_201_CREATED)
-    #         else:
-    #             message = ""
-    #             if 'start_date' in serializer.errors:
-    #                 message = "provide valid date yyyy-mm-dd."
-    #             if 'end_date' in serializer.errors:
-    #                 message = "provide valid date yyyy-mm-dd."
-    #             if 'week_days' in serializer.errors:
-    #                 message = "week_days cannot be blank and must be comma saparated string like 2022-07-12,2022-07-13."
-    #             if 'prefix' in serializer.errors:
-    #                 message = "prefix cannot be blank must be string choice like day,month,year,week."
-    #             if 'prefix_value' in serializer.errors:
-    #                 message="prefix_value must be integer."
-    #             return Response({"status":False, "message":message},status=status.HTTP_400_BAD_REQUEST)  
-
-    # def delete(self,request):
-    #     try:
-    #         user = User.objects.get(email=request.user).id
-    #     except User.DoesNotExist:
-    #         return Response({'status':False, 'message':'user data not found'}, status=status.HTTP_404_NOT_FOUND)
-    #     try:
-    #         trans = Transaction.objects.get(user_id=user, id=request.data.get('transaction_id'))
-    #     except Transaction.DoesNotExist:
-    #         return Response({'status':False, 'message':'transaction data not found'}, status=status.HTTP_404_NOT_FOUND)
-    #     try:
-    #         periodic = Periodic.objects.get(id=trans.periodic_id)
-    #     except Periodic.DoesNotExist:
-    #         return Response({'status':False, 'message':'periodic data not found'}, status=status.HTTP_404_NOT_FOUND)
-    #     periodic.delete()
-    #     return Response({"status":True, "message":"data was successfully delete"}, status=status.HTTP_200_OK)
 # User periodic API Code end#
 
 # User setting API Code Start#
@@ -2340,13 +2206,42 @@ class TransactionView(APIView):
                         else:
                             return Response({"status":False, "message":"Paid amount %s is grater then the Debt amount %s"%(request.data["amount"], debt.amount)}, status=status.HTTP_400_BAD_REQUEST)
 
-                    data_dict ={
-                        "title":title,
-                        "description":description,
-                        "amount":request.data["amount"],
-                        "income_from":income.id,
-                        "debt":debt.id
-                    }
+                    if location_serializer != "" and periodicSerializer == "":
+                        data_dict ={
+                            "title":title,
+                            "description":description,
+                            "amount":request.data["amount"],
+                            "income_from":income.id,
+                            "debt":debt.id,
+                            "location":location_serializer.data.get('id')
+                        }
+                    elif location_serializer == "" and periodicSerializer != "":
+                        data_dict ={
+                            "title":title,
+                            "description":description,
+                            "amount":request.data["amount"],
+                            "income_from":income.id,
+                            "debt":debt.id,
+                            "periodic":periodicSerializer.data.get('id')
+                        }
+                    elif location_serializer != "" and periodicSerializer != "":
+                        data_dict ={
+                            "title":title,
+                            "description":description,
+                            "amount":request.data["amount"],
+                            "income_from":income.id,
+                            "debt":debt.id,
+                            "location":location_serializer.data.get('id'),
+                            "periodic":periodicSerializer.data.get('id')
+                        }
+                    else:
+                        data_dict ={
+                            "title":title,
+                            "description":description,
+                            "amount":request.data["amount"],
+                            "income_from":income.id,
+                            "debt":debt.id
+                        }
                     
                     if 'created_at' in request.data and "modified_at" in request.data:
                         data_dict.update({"created_at":request.data["created_at"]})
@@ -2880,7 +2775,16 @@ class TransactionView(APIView):
         
         return Response({"status":True, "message":"transaction data Fetched Succcessfully", "data":data_dict}, status=status.HTTP_200_OK)
 
-    def delete(self, request, pk=None, format=None):    # Changes Required Here #
+    def delete(self, request, pk=None, format=None):  
+        expense = ""
+        transaction = ""
+        income_to = ""
+        income_from = ""
+        goal = ""
+        source = ""
+        debt = ""
+        location = ""
+        periodic = ""
         if pk is not None and pk != '':
             try:
                 user = User.objects.get(email=request.user).id
@@ -2900,29 +2804,31 @@ class TransactionView(APIView):
                 LogsAPI.objects.create(apiname=str(request.get_full_path()), request_header=json.dumps(header), response_data=json.dumps({"status":False,"message":"user have not any transaction data"}), email=request.user, status=False)
                 return Response({"status":False, "message":"user have not any transaction by id %s"%(pk)}, status=status.HTTP_400_BAD_REQUEST)
         
-            if transaction.income_to_id != "":
+            if transaction.income_to_id != "" and transaction.income_to_id is not None:
                 income_to = Income.objects.filter(id=transaction.income_to_id)
 
-            if transaction.income_from_id != "":
+            if transaction.income_from_id != "" and transaction.income_from_id is not None:
                 income_from = Income.objects.filter(id=transaction.income_from_id)
             
-            if transaction.expense_id != "":
+            if transaction.expense_id != "" and transaction.expense_id is not None:
                 expense = Expense.objects.filter(id=transaction.expense_id)    
             
-            if transaction.goal_id != "":
+            if transaction.goal_id != "" and transaction.goal_id is not None:
                 goal = Goal.objects.filter(id=transaction.goal_id)
 
-            if transaction.source_id != "":
+            if transaction.source_id != "" and transaction.source_id is not None:
                 source = SourceIncome.objects.filter(id=transaction.source_id)  
 
-            if transaction.debt_id is not None:
+            if transaction.debt_id is not None and transaction.debt_id != "":
                 debt = Debt.objects.filter(id=str(transaction.debt_id))
             
-            if transaction.locaion_id != "":
-                location = Location.objects.filter(id=str(transaction.locaion_id))
+            if transaction.location_id != "" and transaction.location_id is not None:
+                location = Location.objects.filter(id=str(transaction.location_id))
+                location.delete()
             
-            if transaction.periodic_id != "":
+            if transaction.periodic_id != "" and transaction.periodic_id is not None:
                 periodic = Periodic.objects.filter(id=str(transaction.periodic_id))
+                periodic.delete()
             
             if len(income_from) > 0 and len(expense) > 0 and len(income_to) <= 0 and len(goal) <= 0 and len(source) <= 0:
         
@@ -2932,14 +2838,7 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0:
                     income_from.update(amount=income_from_amount)
                     expense.update(spent_amount=expense_amount)
-                    if ((transaction.periodic_id != "" and transaction.locaion_id != "") and (location != [] and periodic != [])):
-                        location.delete()
-                        periodic.delete()
-                    elif ((transaction.periodic_id != "" and transaction.locaion_id == "") and (periodic != [])):
-                        periodic.delete()
-                    else:
-                        if location != []:
-                            location.delete()
+
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -2960,14 +2859,7 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0: 
                     income_from.update(amount=income_from_amount)
                     income_to.update(amount=income_to_amount)
-                    if ((transaction.periodic_id != "" and transaction.locaion_id != "") and (location != [] and periodic != [])):
-                        location.delete()
-                        periodic.delete()
-                    elif ((transaction.periodic_id != "" and transaction.locaion_id == "") and (periodic != [])):
-                        periodic.delete()
-                    else:
-                        if location != []:
-                            location.delete()
+
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -2989,14 +2881,7 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0:
                     source.update(spent_amount=source_amount)
                     income_to.update(amount=income_to_amount)
-                    if ((transaction.periodic_id != "" and transaction.locaion_id != "") and (location != [] and periodic != [])):
-                        location.delete()
-                        periodic.delete()
-                    elif ((transaction.periodic_id != "" and transaction.locaion_id == "") and (periodic != [])):
-                        periodic.delete()
-                    else:
-                        if location != []:
-                            location.delete()
+
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -3018,14 +2903,7 @@ class TransactionView(APIView):
                 if len(str(deleted_transaction)) > 0:
                     income_from.update(amount=income_from_amount)
                     goal.update(added_amount=goal_amount) 
-                    if ((transaction.periodic_id != "" and transaction.locaion_id != "") and (location != [] and periodic != [])):
-                        location.delete()
-                        periodic.delete()
-                    elif ((transaction.periodic_id != "" and transaction.locaion_id == "") and (periodic != [])):
-                        periodic.delete()
-                    else:
-                        if location != []:
-                            location.delete()
+
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -3050,14 +2928,7 @@ class TransactionView(APIView):
                         debt.update(paid_amount=debt_amount, is_partial_paid=False, is_paid=False, is_completed=False) 
                     else:
                         debt.update(paid_amount=debt_amount) 
-                    if ((transaction.periodic_id != "" and transaction.locaion_id != "") and (location != [] and periodic != [])):
-                        location.delete()
-                        periodic.delete()
-                    elif ((transaction.periodic_id != "" and transaction.locaion_id == "") and (periodic != [])):
-                        periodic.delete()
-                    else:
-                        if location != []:
-                            location.delete()
+
                 else:
                     header = {
                         "HTTP_AUTHORIZATION":request.META['HTTP_AUTHORIZATION']
@@ -3217,7 +3088,7 @@ class TagView(APIView):
             return Response({"status":False,"message":"Please Provide Tag Id in request like url/<id>"},status=status.HTTP_400_BAD_REQUEST) 
 # class TagView Code end #
 
-# class HomeVIEW Code Start #
+# class HomeVIEW Code Start With Reccustion Transaction #
 class HomeView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, format=None):
@@ -3290,6 +3161,7 @@ class HomeView(APIView):
         if transacion != []:
             for x in transacion:
                 amount = x.amount
+                
                 if x.income_from_id is not None and x.income_from_id != "":
                     income_from = Income.objects.filter(user_id=user, id=x.income_from_id) 
                 
@@ -3328,7 +3200,7 @@ class HomeView(APIView):
                 
                             Transaction.objects.filter(id=str(x.id), periodic_id=str(x.periodic_id)).update(amount=float(amount ))
                             
-                            if (source != [] and income_to != [] and goal == [] and income_from == [] and expense == [] and debt == []):
+                            if x.income_to_id is not None and x.income_to_id != "" and x.source_id is not None and x.source_id != "":
                                 source_amount = source[0].spent_amount
                                 income_to_amount = income_to[0].amount
                         
@@ -3338,7 +3210,7 @@ class HomeView(APIView):
                                 source.update(spent_amount=source_amount)
                                 income_to.update(amount=income_to_amount)
                                     
-                            elif (source == [] and income_to != [] and goal == [] and income_from != [] and expense == [] and debt == []):
+                            elif x.income_to_id is not None and x.income_to_id != "" and x.income_from_id is not None and x.income_from_id != "":
                                 income_from_amount = income_from[0].amount
                                 income_to_amount = income_to[0].amount
                                 
@@ -3348,7 +3220,7 @@ class HomeView(APIView):
                                 income_from.update(amount=income_from_amount)
                                 income_to.update(amount=income_to_amount)
                                 
-                            elif (source == [] and income_to == [] and goal != [] and income_from != [] and expense == [] and debt == []):
+                            elif x.income_from_id is not None and x.income_from_id != "" and x.goal_id is not None and x.goal_id != "":
                                 income_from_amount = income_from[0].amount
                                 goal_amount = goal[0].added_amount
                         
@@ -3358,7 +3230,7 @@ class HomeView(APIView):
                                 income_from.update(amount=income_from_amount)
                                 goal.update(added_amount=goal_amount)
 
-                            elif (source == [] and income_to == [] and goal == [] and income_from != [] and expense != [] and debt == []):
+                            elif x.income_from_id is not None and x.income_from_id != "" and x.expense_id is not None and x.expense_id != "":
                                 income_from_amount = income_from[0].amount
                                 expense_amount = expense[0].spent_amount
                             
@@ -3368,22 +3240,19 @@ class HomeView(APIView):
                                 income_from.update(amount=income_from_amount)
                                 expense.update(spent_amount=expense_amount)
                         
-                            elif (source == [] and income_to == [] and goal == [] and income_from != [] and expense == [] and debt != []):
+                            elif x.income_from_id is not None and x.income_from_id != "" and x.debt_id is not None and x.debt_id != "":
                                 print("yes")
                                 income_from_amount = income_from[0].amount
                                 debt_amount = debt[0].paid_amount
-
-                                print(debt_amount , income_from_amount , "before update")
                                 
                                 income_from_amount = float(income_from_amount) - float(x.transaction_amount)
                                 debt_amount = float(debt_amount) + float(x.transaction_amount)
-
-                                print(debt_amount , income_from_amount , "after update")
                                    
                                 income_from.update(amount=income_from_amount)
                                 debt.update(paid_amount=debt_amount)
     
-                    repeat_status = ','.join(repeat_status)      
+                    repeat_status = ','.join(repeat_status)   
+                    print(repeat_status)   
                     Periodic.objects.filter(id=str(x.periodic_id)).update(status_days=repeat_status)
         # Reccurence Transaction Code End #
 
