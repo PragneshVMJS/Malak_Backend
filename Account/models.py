@@ -92,13 +92,12 @@ def upload_to(instance, filename):
 
 class User(AbstractBaseUser):
     firstname = models.CharField(max_length=255)
-    lastname = models.CharField(max_length=255)
+    lastname = models.CharField(max_length=255, default="", blank=True, null=True)
     email = models.EmailField(
         verbose_name='Email',
         max_length=255,
         unique=True,
     )
-    # password = models.CharField(_('password'), max_length=128 , blank=True, null=True)
     mobile = models.CharField(max_length=255, default="", blank=True, null=True)
     country = models.CharField(max_length=255, blank=True, null=True)
     birthdate = models.CharField(default='', blank=True, null=True, max_length=255)
@@ -289,6 +288,7 @@ class Debt(models.Model):
 class Transaction(models.Model):
     title = models.CharField(max_length=255, default=None, blank=True, null=True)
     description = models.CharField(max_length=255, default=None, blank=True, null=True)
+    transaction_amount = models.DecimalField(max_digits=15, decimal_places=2, default="0.00")
     amount = models.DecimalField(max_digits=15, decimal_places=2, default="0.00")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user")
     income_to = models.ForeignKey(Income, on_delete=models.CASCADE, blank=True, null=True, related_name="transaction_to_income")

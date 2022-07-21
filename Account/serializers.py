@@ -298,7 +298,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ['id', 'title','description','amount','income_to', 'income_from', 'expense', 'goal', 'source','debt', 'user', 'location','periodic', 'tag', 'is_completed', 'created_at', 'modified_at']
+        fields = ['id', 'title','description','transaction_amount','amount','income_to', 'income_from', 'expense', 'goal', 'source','debt', 'user', 'location','periodic', 'tag', 'is_completed', 'created_at', 'modified_at']
         extra_kwargs = {
             "id":{"read_only":True},
             "user":{'write_only':True},
@@ -308,6 +308,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "created_at":{'required':False},
             "modified_at":{'required':False},
             "tag":{"required":False},
+            "transaction_amount":{"required":False},
             'is_completed':{"required":False}
         }
 
@@ -324,7 +325,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             validated_data.update({"created_at":date.today()})
             validated_data.update({"modified_at":date.today()})
 
-
+        validated_data.update({"transaction_amount":validated_data["amount"]})
+        
         if 'is_completed' not in validated_data:
             validated_data.update({"is_completed":True})
 

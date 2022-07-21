@@ -1,8 +1,15 @@
 from django.conf.urls import url
 from . import views
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 
 urlpatterns = [
+    url(r'^api/token/$', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    url(r'^api/token/refresh/$', TokenRefreshView.as_view(), name='token_refresh'),
     url(r'^register$', views.UserRegistrationView.as_view(), name="register"),
     url(r'^login$', views.UserLoginView.as_view(), name="login"),
     url(r'^profile$', views.UserProfileView.as_view(), name="profile"),

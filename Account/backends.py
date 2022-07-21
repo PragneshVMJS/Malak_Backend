@@ -5,6 +5,7 @@ from .models import User
 class UserAuthenticationBackend(ModelBackend):
 
     def authenticate(self, request, **kwargs):
+        print("yes")
         user = None
         if kwargs["registered_by"] == "manual":
             email = kwargs["email"]
