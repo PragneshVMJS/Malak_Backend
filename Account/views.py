@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+# from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from django.contrib.auth import authenticate
 from Account.renderer import UserRenderer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -13,9 +14,16 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth.hashers import make_password
 import json
 from django.db.models import Sum
-from datetime import date, datetime
+from datetime import date, timedelta, datetime as dt
+import datetime
 from django.core.files.storage import FileSystemStorage
 from dateutil.relativedelta import relativedelta
+from django.core.mail import EmailMessage
+from django.conf import settings
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.shortcuts import render
+from django.template.loader import render_to_string
 # Create your views here.
 
 ## Date Control ##
@@ -27,11 +35,11 @@ def Get_Dates(prefix, prefix_value, enddate, startdate=None):
     start_date = ""
 
     if startdate is not None:
-        start_date = datetime.strptime(str(startdate), '%Y-%m-%d').date()
+        start_date = dt.strptime(str(startdate), '%Y-%m-%d').date()
     else:
         start_date = date.today()
     
-    end_date = datetime.strptime(str(enddate), '%Y-%m-%d').date()
+    end_date = dt.strptime(str(enddate), '%Y-%m-%d').date()
 
     if prefix == "month":
         del month_dates[:]
@@ -69,7 +77,7 @@ def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     refresh_token = refresh
     access_token = refresh.access_token
-
+    
     return {
         'refresh': str(refresh_token),
         'access': str(access_token),
@@ -106,7 +114,7 @@ class UserRegistrationView(APIView):
         if serializer.is_valid(raise_exception=False):
             user = serializer.save()
             token = get_tokens_for_user(user)
-
+            
             user = User.objects.get(email=user)
             settings = Setting.objects.create(user_id=user.id)
             country = ''
@@ -225,6 +233,8 @@ class UserLoginView(APIView):
                         return Response({"status":False, "message":"Your account is not active, please contact admin"}, status=status.HTTP_400_BAD_REQUEST)
                     elif user is not None:
                         token = get_tokens_for_user(user)
+                        check = RefreshToken(token.get('refresh'))
+                        print(check)
                         try:
                             user = User.objects.get(email=serializer.data.get('email'))
                         except User.DoesNotExist:
@@ -1668,13 +1678,13 @@ class TransactionView(APIView):
                 if 'week_days' in request.data and request.data["week_days"] != "":
                     Date_List = str(request.data["week_days"]).split(",")
                     for x in Date_List:
-                        x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
-                        if x_date == datetime.now().date():
+                        x_date = dt.strptime(str(x), '%Y-%m-%d').date()
+                        if x_date == dt.now().date():
                             Date_List.remove(x)
                             
                     for x in data:
-                        x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
-                        if x_date > datetime.now().date():
+                        x_date = dt.strptime(str(x), '%Y-%m-%d').date()
+                        if x_date > dt.now().date():
                             status_list.append(False)
 
                     status_days = ','.join(status_list)
@@ -2370,13 +2380,13 @@ class TransactionView(APIView):
             #             print("C")
             #             Date_List = str(request.data["week_days"]).split(",")
             #             for x in Date_List:
-            #                 x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
-            #                 if x_date == datetime.now().date():
+            #                 x_date = dt.strptime(str(x), '%Y-%m-%d').date()
+            #                 if x_date == dt.now().date():
             #                     Date_List.remove(x)
 
             #             for x in Date_List:
-            #                 x_date = datetime.strptime(str(x), '%Y-%m-%d').date()
-            #                 if x_date > datetime.now().date():
+            #                 x_date = dt.strptime(str(x), '%Y-%m-%d').date()
+            #                 if x_date > dt.now().date():
             #                     status_list.append(False)
             #             status_days = ','.join(status_list)
             #             periodic_dict = {
@@ -3191,7 +3201,7 @@ class HomeView(APIView):
                         repeat_status = str(periodic.status_days).split(',')
                     
                     for i, repeat_date in enumerate(repeat_dates):
-                        repeat = datetime.strptime(str(repeat_date), '%Y-%m-%d').date()
+                        repeat = dt.strptime(str(repeat_date), '%Y-%m-%d').date()
                         if repeat <= date.today():
                             if repeat_status[i].encode('ascii') == "False":
                                 transacion_amount = float(amount) + float(x.transaction_amount)
@@ -3252,7 +3262,6 @@ class HomeView(APIView):
                                 debt.update(paid_amount=debt_amount)
     
                     repeat_status = ','.join(repeat_status)   
-                    print(repeat_status)   
                     Periodic.objects.filter(id=str(x.periodic_id)).update(status_days=repeat_status)
         # Reccurence Transaction Code End #
 
@@ -3552,3 +3561,58 @@ class ReportView(APIView):
         LogsAPI.objects.create(apiname=str(request.get_full_path()), request_header=json.dumps(header), response_data=json.dumps({"status":True, "message":"report data Fetched Succcessfully"}), email=request.user, status=True)
         return Response({"status":True, "message":"report data Fetched Succcessfully", "data":data_dict},status=status.HTTP_201_CREATED)
 ### Report API VIEW CODE END ###
+
+
+# User Reset / Forgot Password API Start #
+class ResetPassword(APIView):
+    # User Got The Reset Password Link on Email. #
+    def post(self, request):
+        if 'email' in request.data and request.data["email"] != "":
+            user = User.objects.get(email=request.data["email"])
+            if user:
+                expire = dt.now().date() + timedelta(days=1)
+                print(expire)
+                uid = urlsafe_base64_encode(force_bytes({"user":user.email, "expire":str(expire)}))
+                link = request.build_absolute_uri('?uid=%s'%(uid))
+            
+                subject = 'Password Reset Email'
+                message = render_to_string('reset.html', {'name': user.firstname, "link":link})
+                sender = settings.EMAIL_HOST_USER
+                receiver = (request.data["email"],)
+                mssg = EmailMessage(subject, message, sender, receiver)
+                mssg.content_subtype = "html"
+                mssg.send()
+            else:
+                return Response({"status":False, "message":"User doesn't exist."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"status":True, "message":"Email Send Successfully, Please check your Spam."}, status=status.HTTP_200_OK)
+        else:
+            return Response({"status":False, "message":"Please Enter Email Address."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # User Redirect to Reset Form. #
+    def get(self, request):
+        uid = request.query_params.get("uid")
+        user_data = urlsafe_base64_decode(uid)
+        user_data = eval(user_data)
+        expire = dt.strptime(str(user_data["expire"]), '%Y-%m-%d').date()
+        if dt.now().date() <= expire:
+            user = user_data["user"]
+            return render(request, "reset_password.html", {"user":user, "message":""})
+        else:
+            return render(request, "reset_password.html", {"message":"Reset Token Expiered."})  
+
+# Reset Password Post Method #
+def confirm(request):
+    if request.method == "POST":
+        if request.POST.get("password") != "" and request.POST.get("password2") != "":
+            if request.POST["password"] == request.POST.get("password2"):
+                user = User.objects.filter(email=str(request.POST.get("user")))
+                if user == []:
+                    return render(request, "reset_password.html", {"message":"user not found."})
+                password = make_password(request.POST.get("password"))
+                user.update(password=password)
+                return render(request, "reset_password.html", {"message":"Password Successfully Reset."})
+            else:
+                return render(request, "reset_password.html", {"message":"Password and Re-password doesn't match."})
+        else:
+            return render(request, "reset_password.html", {"message":"Password and Re-password cannot be blank."})
+# User Reset / Forgot Password API End #

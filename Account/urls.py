@@ -1,6 +1,7 @@
 from django.conf.urls import url
 from . import views
 
+
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenObtainPairView
@@ -8,6 +9,8 @@ from rest_framework_simplejwt.views import (
 
 
 urlpatterns = [
+    url(r'^reset/$', views.ResetPassword.as_view(), name="reset"),
+    url(r'^confirm/$', views.confirm, name="confirm"),
     url(r'^token/$', TokenObtainPairView.as_view(), name="token_obtain_pair"),
     url(r'^token/refresh/$', TokenRefreshView.as_view(), name="token_obtain_pair"),
     url(r'^register$', views.UserRegistrationView.as_view(), name="register"),
